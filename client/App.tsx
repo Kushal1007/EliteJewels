@@ -17,6 +17,7 @@ import Silver from "./pages/Silver";
 import Contact from "./pages/Contact";
 import UserDashboard from "./pages/UserDashboard";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
                   <Route path="/gold" element={<Gold />} />
                   <Route path="/silver" element={<Silver />} />
                   <Route path="/contact" element={<Contact />} />
+                  <Route path="/admin" element={<Admin />} />
                   <Route path="/dashboard" element={<UserDashboard />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

@@ -1,19 +1,49 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { User, Package, Heart, Clock, CheckCircle, Truck, MessageCircle, LogOut } from 'lucide-react';
-import Layout from '@/components/Layout';
-import { useAuth } from '../contexts/AuthContext';
-import { useOrders } from '../contexts/OrdersContext';
-import { useFavorites } from '../contexts/FavoritesContext';
-import { useCart } from '../contexts/CartContext';
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { 
+  User, Package, Heart, Clock, CheckCircle, Truck, 
+  MessageCircle, LogOut 
+} from "lucide-react";
+import Layout from "@/components/Layout";
+import { useAuth } from "../contexts/AuthContext";
+import { useOrders } from "../contexts/OrdersContext";
+import { useFavorites } from "../contexts/FavoritesContext";
+import { useCart } from "../contexts/CartContext";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function UserDashboard() {
   const { user, isLoggedIn, logout } = useAuth();
   const { getUserOrders } = useOrders();
   const { favorites } = useFavorites();
   const { addToCart } = useCart();
+
+  const [profile, setProfile] = useState<any>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+
+  // Fetch profile from Supabase profiles table
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("name, email, phone")
+        .eq("id", user.id)
+        .single();
+
+      if (!error && data) {
+        setProfile(data);
+      }
+      setLoadingProfile(false);
+    };
+
+    fetchProfile();
+  }, [user]);
 
   if (!isLoggedIn) {
     return (
@@ -25,26 +55,26 @@ export default function UserDashboard() {
     );
   }
 
-  const userOrders = getUserOrders(user?.email || '');
+  const userOrders = getUserOrders(profile?.email || "");
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed': return 'bg-blue-100 text-blue-800';
-      case 'in-progress': return 'bg-purple-100 text-purple-800';
-      case 'ready': return 'bg-green-100 text-green-800';
-      case 'delivered': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "pending": return "bg-yellow-100 text-yellow-800";
+      case "confirmed": return "bg-blue-100 text-blue-800";
+      case "in-progress": return "bg-purple-100 text-purple-800";
+      case "ready": return "bg-green-100 text-green-800";
+      case "delivered": return "bg-gray-100 text-gray-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'pending': return <Clock className="w-4 h-4" />;
-      case 'confirmed': return <CheckCircle className="w-4 h-4" />;
-      case 'in-progress': return <Package className="w-4 h-4" />;
-      case 'ready': return <CheckCircle className="w-4 h-4" />;
-      case 'delivered': return <Truck className="w-4 h-4" />;
+      case "pending": return <Clock className="w-4 h-4" />;
+      case "confirmed": return <CheckCircle className="w-4 h-4" />;
+      case "in-progress": return <Package className="w-4 h-4" />;
+      case "ready": return <CheckCircle className="w-4 h-4" />;
+      case "delivered": return <Truck className="w-4 h-4" />;
       default: return <Clock className="w-4 h-4" />;
     }
   };
@@ -60,8 +90,11 @@ export default function UserDashboard() {
                 <User className="w-8 h-8 text-yellow-600" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{user?.name}</h1>
-                <p className="text-gray-600">{user?.email}</p>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {loadingProfile ? "Loading..." : profile?.name || "No Name"}
+                </h1>
+                <p className="text-gray-600">{profile?.email || "No email"}</p>
+                <p className="text-gray-600">📞 {profile?.phone}</p>
               </div>
             </div>
 
@@ -74,7 +107,7 @@ export default function UserDashboard() {
               <span>Logout</span>
             </Button>
           </div>
-
+        </div>
           {/* Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card>
@@ -115,7 +148,7 @@ export default function UserDashboard() {
               </CardContent>
             </Card>
           </div>
-        </div>
+        
 
         <Tabs defaultValue="orders" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">

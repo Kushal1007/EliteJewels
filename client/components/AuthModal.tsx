@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { ShoppingBag, Mail, Lock, User, Phone } from 'lucide-react';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { ShoppingBag, Mail, Lock, User, Phone } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -14,40 +16,79 @@ interface AuthModalProps {
   onDemoLogin: () => void;
 }
 
-export default function AuthModal({ isOpen, onClose, onLogin, onDemoLogin }: AuthModalProps) {
-  const [loginData, setLoginData] = useState({ email: '', password: '' });
-  const [signupData, setSignupData] = useState({ 
-    name: '', 
-    email: '', 
-    phone: '', 
-    password: '', 
-    confirmPassword: '' 
+export default function AuthModal({
+  isOpen,
+  onClose,
+  onLogin,
+  onDemoLogin,
+}: AuthModalProps) {
+  const [loginData, setLoginData] = useState({ phone: "", password: "" });
+  const [signupData, setSignupData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [message, setMessage] = useState("");
+
+  // Login with phone + password
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login logic
-    console.log('Login:', loginData);
-    onLogin();
-    onClose();
+    setMessage("");
+
+    const phoneWithCode = "+91" + loginData.phone;
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      phone: phoneWithCode,
+      password: loginData.password,
+    });
+
+    if (error) {
+      setMessage("❌ Login failed: " + error.message);
+    } else {
+      setMessage("✅ Login successful!");
+      onLogin();
+      onClose();
+    }
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  // Signup with phone + password
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setMessage("");
+
     if (signupData.password !== signupData.confirmPassword) {
-      alert('Passwords do not match!');
+      setMessage("❌ Passwords do not match");
       return;
     }
-    // Mock signup logic
-    console.log('Signup:', signupData);
-    onLogin();
-    onClose();
+
+    const phoneWithCode = "+91" + signupData.phone;
+
+    const { data, error } = await supabase.auth.signUp({
+      phone: phoneWithCode,
+      password: signupData.password,
+      options: {
+        data: {
+          name: signupData.name,
+          email: signupData.email || null,
+        },
+      },
+    });
+
+    if (error) {
+      setMessage("❌ Signup failed: " + error.message);
+    } else {
+      setMessage("✅ Account created successfully! You can now log in.");
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogTitle className="sr-only">Authentication</DialogTitle>
+
         <div className="flex items-center justify-center mb-6">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
@@ -63,6 +104,7 @@ export default function AuthModal({ isOpen, onClose, onLogin, onDemoLogin }: Aut
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
           </TabsList>
 
+          {/* Login */}
           <TabsContent value="login">
             <Card className="border-0 shadow-none">
               <CardHeader className="text-center pb-4">
@@ -71,16 +113,18 @@ export default function AuthModal({ isOpen, onClose, onLogin, onDemoLogin }: Aut
               <CardContent>
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
+                    <Label htmlFor="login-phone">Phone Number</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="Enter your email"
+                        id="login-phone"
+                        type="tel"
+                        placeholder="Enter phone without +91"
                         className="pl-10"
-                        value={loginData.email}
-                        onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                        value={loginData.phone}
+                        onChange={(e) =>
+                          setLoginData({ ...loginData, phone: e.target.value })
+                        }
                         required
                       />
                     </div>
@@ -96,13 +140,21 @@ export default function AuthModal({ isOpen, onClose, onLogin, onDemoLogin }: Aut
                         placeholder="Enter your password"
                         className="pl-10"
                         value={loginData.password}
-                        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                        onChange={(e) =>
+                          setLoginData({
+                            ...loginData,
+                            password: e.target.value,
+                          })
+                        }
                         required
                       />
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-600 mb-3">
+                  <Button
+                    type="submit"
+                    className="w-full bg-yellow-500 hover:bg-yellow-600 mb-3"
+                  >
                     Login
                   </Button>
 
@@ -114,15 +166,12 @@ export default function AuthModal({ isOpen, onClose, onLogin, onDemoLogin }: Aut
                   >
                     Demo Login (Try Now)
                   </Button>
-
-                  <div className="text-center text-sm text-gray-600">
-                    <a href="#" className="hover:text-yellow-600">Forgot password?</a>
-                  </div>
                 </form>
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* Signup */}
           <TabsContent value="signup">
             <Card className="border-0 shadow-none">
               <CardHeader className="text-center pb-4">
@@ -140,14 +189,16 @@ export default function AuthModal({ isOpen, onClose, onLogin, onDemoLogin }: Aut
                         placeholder="Enter your full name"
                         className="pl-10"
                         value={signupData.name}
-                        onChange={(e) => setSignupData({ ...signupData, name: e.target.value })}
+                        onChange={(e) =>
+                          setSignupData({ ...signupData, name: e.target.value })
+                        }
                         required
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-email">Email</Label>
+                    <Label htmlFor="signup-email">Email (Optional)</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
@@ -156,8 +207,12 @@ export default function AuthModal({ isOpen, onClose, onLogin, onDemoLogin }: Aut
                         placeholder="Enter your email"
                         className="pl-10"
                         value={signupData.email}
-                        onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                        required
+                        onChange={(e) =>
+                          setSignupData({
+                            ...signupData,
+                            email: e.target.value,
+                          })
+                        }
                       />
                     </div>
                   </div>
@@ -169,10 +224,15 @@ export default function AuthModal({ isOpen, onClose, onLogin, onDemoLogin }: Aut
                       <Input
                         id="signup-phone"
                         type="tel"
-                        placeholder="Enter your phone number"
+                        placeholder="Enter phone without +91"
                         className="pl-10"
                         value={signupData.phone}
-                        onChange={(e) => setSignupData({ ...signupData, phone: e.target.value })}
+                        onChange={(e) =>
+                          setSignupData({
+                            ...signupData,
+                            phone: e.target.value,
+                          })
+                        }
                         required
                       />
                     </div>
@@ -188,14 +248,21 @@ export default function AuthModal({ isOpen, onClose, onLogin, onDemoLogin }: Aut
                         placeholder="Create a password"
                         className="pl-10"
                         value={signupData.password}
-                        onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
+                        onChange={(e) =>
+                          setSignupData({
+                            ...signupData,
+                            password: e.target.value,
+                          })
+                        }
                         required
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                    <Label htmlFor="signup-confirm-password">
+                      Confirm Password
+                    </Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                       <Input
@@ -204,25 +271,36 @@ export default function AuthModal({ isOpen, onClose, onLogin, onDemoLogin }: Aut
                         placeholder="Confirm your password"
                         className="pl-10"
                         value={signupData.confirmPassword}
-                        onChange={(e) => setSignupData({ ...signupData, confirmPassword: e.target.value })}
+                        onChange={(e) =>
+                          setSignupData({
+                            ...signupData,
+                            confirmPassword: e.target.value,
+                          })
+                        }
                         required
                       />
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-600">
-                    Create Account
+                  <Button
+                    type="submit"
+                    className="w-full bg-yellow-500 hover:bg-yellow-600"
+                  >
+                    Sign Up
                   </Button>
-
-                  <div className="text-center text-xs text-gray-500">
-                    By signing up, you agree to our Terms of Service and Privacy Policy
-                  </div>
                 </form>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {message && (
+          <div className="mt-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm">
+            {message}
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
+
