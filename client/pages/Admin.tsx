@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 
-export default function Admin() {
+export default function Admin({ onProductAdded }) {
   const [name, setName] = useState("");
   const [minWeight, setMinWeight] = useState("");
-  const [actualWeight, setActualWeight] = useState(""); // ✅ new field
+  const [actualWeight, setActualWeight] = useState("");
   const [productCode, setProductCode] = useState("");
   const [material, setMaterial] = useState("gold");
   const [mainCategory, setMainCategory] = useState("rings");
@@ -25,38 +25,44 @@ export default function Admin() {
       const filePath = `${material}/${mainCategory}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("products")
+        .from("gold")
         .upload(filePath, imageFile);
 
-      if (uploadError) {
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
       const {
         data: { publicUrl },
       } = supabase.storage.from("products").getPublicUrl(filePath);
 
       // 2. Insert into products table
-      const { error: insertError } = await supabase.from("products").insert([
-        {
-          name,
-          min_weight: parseFloat(minWeight),
-          actual_weight: actualWeight ? parseFloat(actualWeight) : null, // ✅ stored in DB only
-          product_code: productCode,
-          material,
-          main_category: mainCategory,
-          sub_category: subCategory,
-          style,
-          image_url: publicUrl,
-        },
-      ]);
+      const { data, error: insertError } = await supabase
+        .from("products")
+        .insert([
+          {
+            name,
+            min_weight: parseFloat(minWeight),
+            actual_weight: actualWeight ? parseFloat(actualWeight) : null,
+            product_code: productCode,
+            material,
+            main_category: mainCategory,
+            sub_category: subCategory,
+            style,
+            image_url: publicUrl,
+          },
+        ])
+        .select(); // ✅ return inserted row
 
       if (insertError) throw insertError;
+
+      // 3. Send new product to parent (ProductsPage)
+      if (onProductAdded && data && data.length > 0) {
+        onProductAdded(data[0]); // ✅ add new product to state
+      }
 
       alert("✅ Product added successfully!");
       setName("");
       setMinWeight("");
-      setActualWeight(""); // reset
+      setActualWeight("");
       setProductCode("");
       setMaterial("gold");
       setMainCategory("rings");
@@ -89,7 +95,6 @@ export default function Admin() {
         className="w-full p-2 border rounded mb-4"
       />
 
-      {/* ✅ New actual weight field */}
       <input
         type="number"
         placeholder="Actual Weight"
@@ -152,7 +157,7 @@ export default function Admin() {
       <input
         type="file"
         accept="image/*"
-        onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+        onChange={(e) => setImageFile(e.target.files?.[0] || null)} 
         className="w-full p-2 border rounded mb-4"
       />
 

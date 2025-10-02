@@ -38,6 +38,6 @@
     "shared/**/*",
     "vite.config.ts",
     "vite.config.server.ts"
-  ],
+, "client/pages/Admin.tsx"  ],
   "exclude": ["node_modules", "dist"]
 }

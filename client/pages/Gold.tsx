@@ -22,6 +22,7 @@ interface Product {
   sub_category?: string;
   style?: string;
   actual_weight?: number;
+  created_at?: string;
 }
 
 interface SubCat {
@@ -72,7 +73,11 @@ export default function Gold() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        let builder: any = supabase.from("products").select("*").eq("material", "gold");
+        let builder: any = supabase
+          .from("products")
+          .select("*")
+          .eq("material", "gold")
+          .order("created_at", { ascending: false }); // ✅ latest products first
 
         if (selectedMainCategory) {
           builder = builder.eq("main_category", selectedMainCategory);
@@ -357,7 +362,6 @@ export default function Gold() {
           <DialogTitle>{selectedProduct?.name || "Product Details"}</DialogTitle>
           {selectedProduct && (
             <>
-              {/* 🔧 Fixed image styling here */}
               <img
                 src={selectedProduct.image_url}
                 alt={selectedProduct.name}
