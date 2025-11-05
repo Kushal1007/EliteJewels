@@ -203,16 +203,15 @@ export default function Index() {
                   <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
                     <Crown className="w-8 h-8 text-white" />
                   </div>
-                  <Badge className="bg-green-500 text-white border-0">
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    Live
+                  <Badge className="bg-green-500 text-white border-0 text-base">
+                    03OCT
                   </Badge>
                 </div>
 
                 <h3 className="text-2xl font-bold mb-3">Gold Rate Today</h3>
                 <div className="mb-4">
-                  <p className="text-4xl md:text-5xl font-bold">₹{goldRate.toFixed(0)}</p>
-                  <p className="text-white/80 text-lg">per gram (24K)</p>
+                  <p className="text-4xl md:text-5xl font-bold">₹11200</p>
+                  <p className="text-white/80 text-lg">per gram (22k)</p>
                 </div>
 
                 <div className="flex items-center text-white/80">
@@ -230,15 +229,14 @@ export default function Index() {
                   <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
                     <Gem className="w-8 h-8 text-white" />
                   </div>
-                  <Badge className="bg-green-500 text-white border-0">
-                    <TrendingUp className="w-3 h-3 mr-1" />
-                    Live
+                  <Badge className="bg-green-500 text-white border-0 text-base">
+                    03OCT
                   </Badge>
                 </div>
 
                 <h3 className="text-2xl font-bold mb-3">Silver Rate Today</h3>
                 <div className="mb-4">
-                  <p className="text-4xl md:text-5xl font-bold">₹{silverRate.toFixed(0)}</p>
+                  <p className="text-4xl md:text-5xl font-bold">₹150</p>
                   <p className="text-white/80 text-lg">per gram</p>
                 </div>
 
@@ -254,7 +252,7 @@ export default function Index() {
           <div className="text-center mt-8">
             <p className="text-gray-500 text-sm">
               <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-              Rates updated automatically • Last update: Just now
+              Rates updated Daily • Last update: 3 October
             </p>
           </div>
         </div>

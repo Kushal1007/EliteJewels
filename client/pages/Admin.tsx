@@ -1,5 +1,16 @@
+"use client";
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Admin({ onProductAdded }) {
   const [name, setName] = useState("");
@@ -10,31 +21,71 @@ export default function Admin({ onProductAdded }) {
   const [mainCategory, setMainCategory] = useState("rings");
   const [subCategory, setSubCategory] = useState("men");
   const [style, setStyle] = useState("all");
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFile, setImageFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // ✅ Categories & subcategories (same as Gold page)
+  const categories = [
+    { id: "chains", name: "Chains" },
+    { id: "earrings", name: "Earrings" },
+    {
+      id: "rings",
+      name: "Rings",
+      subCategories: [
+        { id: "men", name: "Men" },
+        { id: "women", name: "Women" },
+      ],
+    },
+    { id: "haara", name: "Haara" },
+    { id: "necklace", name: "Necklace" },
+    {
+      id: "bracelet",
+      name: "Bracelet",
+      subCategories: [
+        { id: "men", name: "Men" },
+        { id: "women", name: "Women" },
+        { id: "kids", name: "Kids" },
+      ],
+    },
+  ];
+
+  // ✅ Styles specific to each main category
+  const categoryStyles = {
+    chains: ["all", "box", "cable", "rope", "fancy"],
+    earrings: ["all", "stud", "hoop", "drop", "jhumka"],
+    rings: ["all", "single stone", "plain", "couple", "fancy"],
+    haara: ["all", "traditional", "temple", "modern"],
+    necklace: ["all", "choker", "long", "temple", "designer"],
+    bracelet: ["all", "plain", "charm", "link", "fancy"],
+  };
 
   const handleAddProduct = async () => {
     if (!imageFile) {
-      alert("Please select an image");
+      alert("Please select an image first!");
       return;
     }
 
+    setIsUploading(true);
+
     try {
-      // 1. Upload image
+      // ✅ Generate unique file name
       const fileExt = imageFile.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${material}/${mainCategory}/${fileName}`;
+      const filePath = `${mainCategory}/${fileName}`;
 
+      // ✅ Upload to selected material bucket
       const { error: uploadError } = await supabase.storage
-        .from("gold")
+        .from(material)
         .upload(filePath, imageFile);
 
       if (uploadError) throw uploadError;
 
+      // ✅ Get public URL
       const {
         data: { publicUrl },
-      } = supabase.storage.from("products").getPublicUrl(filePath);
+      } = supabase.storage.from(material).getPublicUrl(filePath);
 
-      // 2. Insert into products table
+      // ✅ Insert product into database
       const { data, error: insertError } = await supabase
         .from("products")
         .insert([
@@ -45,21 +96,22 @@ export default function Admin({ onProductAdded }) {
             product_code: productCode,
             material,
             main_category: mainCategory,
-            sub_category: subCategory,
+            sub_category: subCategory || null,
             style,
             image_url: publicUrl,
           },
         ])
-        .select(); // ✅ return inserted row
+        .select();
 
       if (insertError) throw insertError;
 
-      // 3. Send new product to parent (ProductsPage)
       if (onProductAdded && data && data.length > 0) {
-        onProductAdded(data[0]); // ✅ add new product to state
+        onProductAdded(data[0]);
       }
 
       alert("✅ Product added successfully!");
+
+      // Reset form
       setName("");
       setMinWeight("");
       setActualWeight("");
@@ -69,104 +121,132 @@ export default function Admin({ onProductAdded }) {
       setSubCategory("men");
       setStyle("all");
       setImageFile(null);
-    } catch (err: any) {
-      alert(`Unexpected error: ${err.message}`);
+    } catch (err) {
       console.error(err);
+      alert(`❌ Error: ${err.message}`);
+    } finally {
+      setIsUploading(false);
     }
   };
 
+  // ✅ Find selected category
+  const selectedCategory = categories.find((c) => c.id === mainCategory);
+
   return (
-    <div className="max-w-lg mx-auto mt-10 p-6 bg-white shadow rounded">
-      <h2 className="text-2xl font-bold mb-6">Admin Panel</h2>
+    <div className="p-6 max-w-lg mx-auto">
+      <Card className="shadow-xl">
+        <CardContent className="space-y-4 pt-6">
+          <h2 className="text-xl font-semibold mb-4">🛠 Add New Product</h2>
 
-      <input
-        type="text"
-        placeholder="Product Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="w-full p-2 border rounded mb-4"
-      />
+          {/* Product Name */}
+          <Input
+            placeholder="Product Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
 
-      <input
-        type="number"
-        placeholder="Min Weight"
-        value={minWeight}
-        onChange={(e) => setMinWeight(e.target.value)}
-        className="w-full p-2 border rounded mb-4"
-      />
+          {/* Min Weight */}
+          <Input
+            placeholder="Min Weight (grams)"
+            type="number"
+            value={minWeight}
+            onChange={(e) => setMinWeight(e.target.value)}
+          />
 
-      <input
-        type="number"
-        placeholder="Actual Weight"
-        value={actualWeight}
-        onChange={(e) => setActualWeight(e.target.value)}
-        className="w-full p-2 border rounded mb-4"
-      />
+          {/* Actual Weight */}
+          <Input
+            placeholder="Actual Weight (optional)"
+            type="number"
+            value={actualWeight}
+            onChange={(e) => setActualWeight(e.target.value)}
+          />
 
-      <input
-        type="text"
-        placeholder="Product Code"
-        value={productCode}
-        onChange={(e) => setProductCode(e.target.value)}
-        className="w-full p-2 border rounded mb-4"
-      />
+          {/* Product Code */}
+          <Input
+            placeholder="Product Code"
+            value={productCode}
+            onChange={(e) => setProductCode(e.target.value)}
+          />
 
-      <select
-        value={material}
-        onChange={(e) => setMaterial(e.target.value)}
-        className="w-full p-2 border rounded mb-4"
-      >
-        <option value="gold">Gold</option>
-        <option value="silver">Silver</option>
-      </select>
+          {/* Material */}
+          <Select onValueChange={setMaterial} value={material}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Material" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gold">Gold</SelectItem>
+              <SelectItem value="silver">Silver</SelectItem>
+            </SelectContent>
+          </Select>
 
-      <select
-        value={mainCategory}
-        onChange={(e) => setMainCategory(e.target.value)}
-        className="w-full p-2 border rounded mb-4"
-      >
-        <option value="rings">Rings</option>
-        <option value="chains">Chains</option>
-        <option value="bangles">Bangles</option>
-        <option value="earrings">Earrings</option>
-        <option value="necklaces">Necklaces</option>
-        <option value="pendants">Pendants</option>
-      </select>
+          {/* Main Category */}
+          <Select
+            onValueChange={(value) => {
+              setMainCategory(value);
+              setSubCategory(""); // reset subcategory when changing main
+              setStyle("all");
+            }}
+            value={mainCategory}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Main Category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-      <select
-        value={subCategory}
-        onChange={(e) => setSubCategory(e.target.value)}
-        className="w-full p-2 border rounded mb-4"
-      >
-        <option value="men">Men</option>
-        <option value="women">Women</option>
-      </select>
+          {/* Sub Category (only if exists) */}
+          {selectedCategory?.subCategories && (
+            <Select onValueChange={setSubCategory} value={subCategory}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sub Category" />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedCategory.subCategories.map((sub) => (
+                  <SelectItem key={sub.id} value={sub.id}>
+                    {sub.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
-      <select
-        value={style}
-        onChange={(e) => setStyle(e.target.value)}
-        className="w-full p-2 border rounded mb-4"
-      >
-        <option value="all">All</option>
-        <option value="plain">Plain</option>
-        <option value="casting">Casting</option>
-        <option value="fancy">Fancy</option>
-        <option value="single_stone">Single Stone</option>
-      </select>
+          {/* Style (dynamic per category) */}
+          <Select onValueChange={setStyle} value={style}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Style" />
+            </SelectTrigger>
+            <SelectContent>
+              {(categoryStyles[mainCategory] || ["all"]).map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-      <input
-        type="file"
-        accept="image/*"
-        onChange={(e) => setImageFile(e.target.files?.[0] || null)} 
-        className="w-full p-2 border rounded mb-4"
-      />
+          {/* Image Upload */}
+          <Input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setImageFile(e.target.files[0])}
+          />
 
-      <button
-        onClick={handleAddProduct}
-        className="w-full bg-yellow-600 text-white py-2 px-4 rounded hover:bg-yellow-700"
-      >
-        Add Product
-      </button>
+          {/* Submit */}
+          <Button
+            onClick={handleAddProduct}
+            disabled={isUploading}
+            className="w-full"
+          >
+            {isUploading ? "Uploading..." : "Add Product"}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

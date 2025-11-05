@@ -41,7 +41,6 @@ export default function Gold() {
   const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>("men");
   const [selectedStyle, setSelectedStyle] = useState("all");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ rings: true });
-
   const [showFullCollection, setShowFullCollection] = useState<Record<string, boolean>>({});
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -52,7 +51,10 @@ export default function Gold() {
   const { showAddedToCart, showAddedToFavorites, showRemovedFromFavorites, showLoginRequired } =
     useToastNotifications();
 
+  // 🟡 Updated categories
   const categories: MainCat[] = [
+    { id: "chains", name: "Chains" },
+    { id: "earrings", name: "Earrings" },
     {
       id: "rings",
       name: "Rings",
@@ -61,14 +63,44 @@ export default function Gold() {
         { id: "women", name: "Women" },
       ],
     },
-    { id: "chains", name: "Chains" },
-    { id: "bangles", name: "Bangles" },
-    { id: "earrings", name: "Earrings" },
-    { id: "necklaces", name: "Necklaces" },
-    { id: "pendants", name: "Pendants" },
+    { id: "haara", name: "Haara" },
+    { id: "necklace", name: "Necklace" },
+    {
+      id: "bracelet",
+      name: "Bracelet",
+      subCategories: [
+        { id: "men", name: "Men" },
+        { id: "women", name: "Women" },
+        { id: "kids", name: "Kids" },
+      ],
+    },
   ];
 
-  const styles = ["all", "single stone", "plain", "casting", "fancy"];
+  // 🎨 Category-specific styles
+  const categoryStyles: Record<string, string[]> = {
+    chains: ["all", "box", "cable", "rope", "fancy"],
+    earrings: ["all", "stud", "hoop", "drop", "jhumka"],
+    rings: ["all", "single stone", "plain", "couple", "fancy"],
+    haara: ["all", "traditional", "temple", "modern"],
+    necklace: ["all", "choker", "long", "temple", "designer"],
+    bracelet: ["all", "plain", "charm", "link", "fancy"],
+  };
+
+  // 🟩 Height function for each category
+  const getImageHeight = (category: string) => {
+    switch (category.toLowerCase()) {
+      case "chains":
+      case "haara":
+      case "necklace":
+      case "bracelet":
+        return "h-80 sm:h-96"; // taller images
+      case "rings":
+      case "earrings":
+        return "h-64 sm:h-72"; // medium height
+      default:
+        return "h-72"; // fallback
+    }
+  };
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -77,7 +109,7 @@ export default function Gold() {
           .from("products")
           .select("*")
           .eq("material", "gold")
-          .order("created_at", { ascending: false }); // ✅ latest products first
+          .order("created_at", { ascending: false });
 
         if (selectedMainCategory) {
           builder = builder.eq("main_category", selectedMainCategory);
@@ -194,7 +226,7 @@ export default function Gold() {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
-          {/* 🖥 Desktop Sidebar */}
+          {/* Sidebar */}
           <div className="hidden lg:block lg:w-64 flex-shrink-0">
             <div className="bg-white rounded-lg shadow-sm border p-6 sticky top-24">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Categories</h2>
@@ -251,7 +283,7 @@ export default function Gold() {
           <div className="flex-1">
             {/* Style Filters */}
             <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-2">
-              {styles.map((s) => {
+              {(categoryStyles[selectedMainCategory] || ["all"]).map((s) => {
                 const active = selectedStyle === s;
                 return (
                   <button
@@ -269,26 +301,20 @@ export default function Gold() {
               })}
             </div>
 
-            <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 capitalize">
-                {capitalize(selectedMainCategory)}{" "}
-                {selectedSubCategory ? `— ${capitalize(selectedSubCategory)}` : ""}
-              </h2>
-              <p className="text-gray-600 mt-1">
-                {displayedProducts.length} of {products.length} designs
-              </p>
-            </div>
-
             {/* Product Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-8">
               {displayedProducts.map((product) => (
                 <div key={product.id} className="group relative">
                   <Card className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-                    <div className="relative aspect-square">
+                    <div
+                      className={`relative w-full ${getImageHeight(
+                        product.main_category
+                      )} overflow-hidden rounded-xl`}
+                    >
                       <img
                         src={product.image_url}
                         alt={product.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                       <button
                         className={`absolute top-3 right-3 w-8 h-8 bg-white/80 hover:bg-white rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-sm ${
@@ -339,7 +365,6 @@ export default function Gold() {
               ))}
             </div>
 
-            {/* View More */}
             {hasMoreProducts && !isShowingFull && (
               <div className="text-center">
                 <Button
@@ -358,14 +383,14 @@ export default function Gold() {
 
       {/* Product Modal */}
       <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl overflow-y-auto max-h-[90vh]">
           <DialogTitle>{selectedProduct?.name || "Product Details"}</DialogTitle>
           {selectedProduct && (
             <>
               <img
                 src={selectedProduct.image_url}
                 alt={selectedProduct.name}
-                className="w-full h-auto max-h-[400px] object-contain rounded-lg mb-4 mx-auto"
+                className="w-full h-auto max-h-[500px] object-contain rounded-lg mb-4 mx-auto"
               />
               <div className="space-y-4">
                 <div>
