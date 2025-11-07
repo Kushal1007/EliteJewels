@@ -7,6 +7,7 @@ import AuthModal from './AuthModal';
 import CartSidebar from './CartSidebar';
 import FavoritesSidebar from './FavoritesSidebar';
 import { useAuth } from '../contexts/AuthContext';
+import logo from "./MohanJewellers_LOGO_HD.png";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,14 +33,23 @@ export default function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
-                  <ShoppingBag className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold text-gray-900">EliteJewels</span>
-              </div>
-            </Link>
+<Link to="/" className="flex items-center">
+  <img
+    src={logo}
+    alt="Mohan Jewellers Logo"
+    className="
+      h-10                /* mobile size */
+      sm:h-12             /* small screens */
+      md:h-14             /* tablets */
+      lg:h-24             /* large desktops */
+      w-auto              /* keep aspect ratio */
+      object-contain
+      transition-all
+      duration-300
+      hover:scale-105     /* nice hover zoom effect */
+    "
+  />
+</Link>
 
             {/* Auth buttons - Desktop */}
             <div className="hidden md:flex items-center space-x-4">
@@ -161,7 +171,7 @@ export default function Layout({ children }: LayoutProps) {
                 <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
                   <ShoppingBag className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-xl font-bold">EliteJewels</span>
+                <span className="text-xl font-bold">Mohan Jewellers</span>
               </div>
               <p className="text-gray-300 mb-4">
                 Your trusted destination for authentic 916 hallmark gold and silver jewellery. 
@@ -199,7 +209,7 @@ export default function Layout({ children }: LayoutProps) {
               <div className="space-y-2 text-gray-300">
                 <p>📞 +91 98765 43210</p>
                 <p>📱 +91 98765 43210</p>
-                <p>✉️ info@elitejewels.com</p>
+                <p>✉️ info@Mohan Jewellers.com</p>
                 <p>📍 123 Jewellery Street, Mumbai, India</p>
                 <div className="flex space-x-3 mt-4">
                   <a href="#" className="text-gray-300 hover:text-yellow-400">Facebook</a>
@@ -211,7 +221,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
 
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-300">
-            <p>&copy; 2024 EliteJewels. All rights reserved.</p>
+            <p>&copy; 2024 Mohan Jewellers. All rights reserved.</p>
           </div>
         </div>
       </footer>

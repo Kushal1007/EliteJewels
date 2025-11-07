@@ -10,11 +10,11 @@ export default function About() {
       <section className="py-16 bg-gradient-to-br from-yellow-50 to-amber-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-            About <span className="text-yellow-600">EliteJewels</span>
+            About <span className="text-yellow-600">Mohan Jewellers</span>
           </h1>
 
           <p className="text-xl text-gray-600 leading-relaxed mb-8">
-            For over 25 years, EliteJewels has been India's trusted destination for authentic,
+            For over 20 years, Mohan Jewellers has been India's trusted destination for authentic,
             handcrafted jewelry. We combine traditional artistry with modern designs to create
             pieces that celebrate life's most precious moments.
           </p>
@@ -68,7 +68,7 @@ export default function About() {
       {/* Trust & Quality */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">Why Choose EliteJewels?</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-8">Why Choose Mohan Jewellers?</h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
             <div className="text-center">

@@ -66,21 +66,21 @@ export default function Contact() {
     {
       icon: Mail,
       title: "Email",
-      value: "info@elitejewels.com",
-      action: "mailto:info@elitejewels.com"
+      value: "info@Mohan Jewellers.com",
+      action: "mailto:info@Mohan Jewellers.com"
     },
     {
       icon: MapPin,
       title: "Store Location",
-      value: "123 Jewellery Street, Mumbai, Maharashtra 400001",
-      action: "https://maps.google.com/?q=123+Jewellery+Street+Mumbai"
+      value: "Gandhi bazar, Ammeer Mohalla, Hassan, Karnataka 573201",
+      action: "https://maps.app.goo.gl/dg5SnCr5CwHqWNW6A?g_st=aw"
     }
   ];
 
   const socialLinks = [
-    { icon: Instagram, name: "Instagram", url: "https://instagram.com/elitejewels", handle: "@elitejewels" },
-    { icon: Facebook, name: "Facebook", url: "https://facebook.com/elitejewels", handle: "EliteJewels" },
-    { icon: Twitter, name: "Twitter", url: "https://twitter.com/elitejewels", handle: "@elitejewels" }
+    { icon: Instagram, name: "Instagram", url: "https://instagram.com/Mohan Jewellers", handle: "@Mohan Jewellers" },
+    { icon: Facebook, name: "Facebook", url: "https://facebook.com/Mohan Jewellers", handle: "Mohan Jewellers" },
+    { icon: Twitter, name: "Twitter", url: "https://twitter.com/Mohan Jewellers", handle: "@Mohan Jewellers" }
   ];
 
   const faqItems = [
@@ -225,7 +225,7 @@ export default function Contact() {
                       </div>
                       <div className="mt-4 p-3 bg-green-50 rounded-lg">
                         <p className="text-green-700 text-sm font-medium">
-                          💬 WhatsApp responses within 30 minutes during business hours
+                          💬 WhatsApp responses within one hour during business hours
                         </p>
                       </div>
                     </div>
@@ -240,18 +240,18 @@ export default function Contact() {
                   <CardContent>
                     <div className="aspect-video w-full rounded-lg overflow-hidden">
                       <iframe
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3771.8479494994847!2d72.8327!3d19.0760!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMTnCsDA0JzMzLjYiTiA3MsKwNDknNTcuNyJF!5e0!3m2!1sen!2sin!4v1620000000000!5m2!1sen!2sin"
+                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d242.96939243645647!2d76.09821818083664!3d13.00314406541819!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba54817e26e4099%3A0x80a371579b1a50cc!2sMohan%20Jewellers!5e0!3m2!1sen!2sin!4v1762365851187!5m2!1sen!2sin"
                         width="100%"
                         height="100%"
                         style={{ border: 0 }}
                         allowFullScreen
                         loading="lazy"
                         referrerPolicy="no-referrer-when-downgrade"
-                        title="EliteJewels Store Location"
+                        title="Mohan Jewellers Store Location"
                       />
                     </div>
                     <p className="text-gray-600 text-sm mt-3">
-                      Located in the heart of Mumbai's jewellery district
+                      Located at Gandhi Bazar, Hassan - 573201
                     </p>
                   </CardContent>
                 </Card>

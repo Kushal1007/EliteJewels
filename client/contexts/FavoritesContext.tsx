@@ -24,7 +24,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   // Load favorites from localStorage on mount
   useEffect(() => {
-    const savedFavorites = localStorage.getItem('eliteJewels_favorites');
+    const savedFavorites = localStorage.getItem('Mohan Jewellers_favorites');
     if (savedFavorites) {
       try {
         setFavorites(JSON.parse(savedFavorites));
@@ -36,7 +36,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   // Save favorites to localStorage whenever favorites change
   useEffect(() => {
-    localStorage.setItem('eliteJewels_favorites', JSON.stringify(favorites));
+    localStorage.setItem('Mohan Jewellers_favorites', JSON.stringify(favorites));
   }, [favorites]);
 
   const addToFavorites = (product: FavoriteItem) => {

@@ -23,7 +23,7 @@ export default function CartSidebar() {
     if (cartItems.length === 0) return;
 
     // Create order
-    const orderId = createOrder(cartItems, user?.email || 'demo@elitejewels.com');
+    const orderId = createOrder(cartItems, user?.email || 'demo@Mohan Jewellers.com');
 
     // Create WhatsApp message
     const itemsText = cartItems.map(item =>

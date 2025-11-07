@@ -194,7 +194,7 @@ export default function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) 
             <div className="w-8 h-8 bg-gradient-to-r from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
               <ShoppingBag className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">EliteJewels</span>
+            <span className="text-xl font-bold text-gray-900">Mohan Jewellers</span>
           </div>
         </div>
 

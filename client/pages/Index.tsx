@@ -518,7 +518,7 @@ export default function Index() {
               className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-8 py-3 text-lg font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105"
             >
               <span className="mr-3">📸</span>
-              Follow @elitejewels
+              Follow @Mohan Jewellers
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
 

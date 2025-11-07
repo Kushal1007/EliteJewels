@@ -52,7 +52,7 @@ export default function Admin({ onProductAdded }) {
   // ✅ Styles specific to each main category
   const categoryStyles = {
     chains: ["all", "box", "cable", "rope", "fancy"],
-    earrings: ["all", "stud", "hoop", "drop", "jhumka"],
+    earrings: ["all", "stud", "hangings", "drop", "antique jhumka"],
     rings: ["all", "single stone", "plain", "couple", "fancy"],
     haara: ["all", "traditional", "temple", "modern"],
     necklace: ["all", "choker", "long", "temple", "designer"],

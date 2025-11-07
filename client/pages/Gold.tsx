@@ -79,7 +79,7 @@ export default function Gold() {
   // 🎨 Category-specific styles
   const categoryStyles: Record<string, string[]> = {
     chains: ["all", "box", "cable", "rope", "fancy"],
-    earrings: ["all", "stud", "hoop", "drop", "jhumka"],
+    earrings: ["all", "stud", "hangings", "antique jhumka", ""],
     rings: ["all", "single stone", "plain", "couple", "fancy"],
     haara: ["all", "traditional", "temple", "modern"],
     necklace: ["all", "choker", "long", "temple", "designer"],
