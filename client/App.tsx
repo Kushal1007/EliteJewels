@@ -18,7 +18,8 @@ import Contact from "./pages/Contact";
 import UserDashboard from "./pages/UserDashboard";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
-
+import NewArrivalAdmin from "./pages/newarrivals";
+import AdminOrdersPage from "./pages/orders";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -38,7 +39,9 @@ const App = () => (
                   <Route path="/silver" element={<Silver />} />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/admin" element={<Admin />} />
+                  <Route path="/newarrival" element={<NewArrivalAdmin/>} />
                   <Route path="/dashboard" element={<UserDashboard />} />
+                  <Route path="/orders" element={<AdminOrdersPage/>}/>
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
