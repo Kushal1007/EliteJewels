@@ -36,10 +36,18 @@ interface Product {
   created_at?: string;
 }
 
+// ---------- Helper to format INR numbers ----------
+const formatINR = (value: number | null | undefined) => {
+  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  // format with Indian separators and 2 decimals
+  return Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+};
+
 export default function Index() {
   const [currentBanner, setCurrentBanner] = useState(0);
-  const [goldRate, setGoldRate] = useState<number>(6420);
-  const [silverRate, setSilverRate] = useState<number>(82);
+  const [goldRate, setGoldRate] = useState<number | null>(null);
+  const [silverRate, setSilverRate] = useState<number | null>(null);
+  const [ratesLastUpdate, setRatesLastUpdate] = useState<string | null>(null); // ISO string
   const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState<boolean>(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -131,85 +139,117 @@ export default function Index() {
   }, []);
 
   // -------------------------
-  // Realtime subscription to new_arrivals (optional, keeps page live)
+  // Fetch latest rates from Supabase (market_rates table)
   // -------------------------
   useEffect(() => {
-    // subscribe to changes on new_arrivals
+    let isMounted = true;
+    let pollingTimer: NodeJS.Timeout | null = null;
+
+    const fetchRates = async () => {
+      try {
+        // we pick the most recent row (order by updated_at desc limit 1)
+        const { data, error } = await supabase
+          .from("market_rates")
+          .select("id, gold_rate, silver_rate, updated_at, note")
+          .order("updated_at", { ascending: false })
+          .limit(1);
+
+        if (error) {
+          console.error("Error fetching market_rates:", error);
+          return;
+        }
+        if (!data || data.length === 0) {
+          // no rates configured yet
+          if (isMounted) {
+            setGoldRate(null);
+            setSilverRate(null);
+            setRatesLastUpdate(null);
+          }
+          return;
+        }
+
+        const row: any = data[0];
+        if (isMounted) {
+          setGoldRate(row.gold_rate !== null ? Number(row.gold_rate) : null);
+          setSilverRate(row.silver_rate !== null ? Number(row.silver_rate) : null);
+          setRatesLastUpdate(row.updated_at ? new Date(row.updated_at).toISOString() : null);
+        }
+      } catch (err) {
+        console.error("Unexpected fetchRates error:", err);
+      }
+    };
+
+    // initial fetch
+    fetchRates();
+
+    // poll every 30 seconds as a fallback
+    pollingTimer = setInterval(() => {
+      fetchRates();
+    }, 30000);
+
+    return () => {
+      isMounted = false;
+      if (pollingTimer) clearInterval(pollingTimer);
+    };
+  }, []);
+
+  // -------------------------
+  // Realtime subscription to market_rates (listen for inserts/updates)
+  // -------------------------
+  useEffect(() => {
+    // subscribe to changes on market_rates
     const channel = supabase
-      .channel("public:new_arrivals")
+      .channel("public:market_rates")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "new_arrivals" },
-        (payload) => {
-          // payload: { eventType: 'INSERT'|'UPDATE'|'DELETE', new: {...}, old: {...} }
+        { event: "*", schema: "public", table: "market_rates" },
+        (payload: any) => {
           try {
             const ev = (payload as any).eventType?.toUpperCase();
-            if (ev === "INSERT") {
-              const r = (payload as any).new;
-              setProducts((prev) => [
-                {
-                  id: r.id,
-                  name: r.name,
-                  image: r.image_url || r.image || "",
-                  minWeight: r.min_weight || r.minWeight || "",
-                  code: r.code,
-                  category: r.category || "pendant",
-                  created_at: r.created_at,
-                },
-                ...prev,
-              ]);
-            } else if (ev === "UPDATE") {
-              const r = (payload as any).new;
-              setProducts((prev) =>
-                prev.map((p) =>
-                  p.id === r.id
-                    ? {
-                        id: r.id,
-                        name: r.name,
-                        image: r.image_url || r.image || "",
-                        minWeight: r.min_weight || r.minWeight || "",
-                        code: r.code,
-                        category: r.category || "pendant",
-                        created_at: r.created_at,
-                      }
-                    : p
-                )
-              );
+            const r = payload.new ?? payload.old;
+            if (!r) return;
+
+            // For INSERT or UPDATE, update the UI
+            if (ev === "INSERT" || ev === "UPDATE") {
+              setGoldRate(r.gold_rate !== null ? Number(r.gold_rate) : null);
+              setSilverRate(r.silver_rate !== null ? Number(r.silver_rate) : null);
+              setRatesLastUpdate(r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString());
             } else if (ev === "DELETE") {
-              const r = (payload as any).old;
-              setProducts((prev) => prev.filter((p) => p.id !== r.id));
+              // if the latest row was deleted, you might want to re-fetch
+              // fetch latest row from table
+              (async () => {
+                const { data } = await supabase
+                  .from("market_rates")
+                  .select("id, gold_rate, silver_rate, updated_at")
+                  .order("updated_at", { ascending: false })
+                  .limit(1);
+                if (data && data.length > 0) {
+                  const nr: any = data[0];
+                  setGoldRate(nr.gold_rate !== null ? Number(nr.gold_rate) : null);
+                  setSilverRate(nr.silver_rate !== null ? Number(nr.silver_rate) : null);
+                  setRatesLastUpdate(nr.updated_at ? new Date(nr.updated_at).toISOString() : new Date().toISOString());
+                } else {
+                  setGoldRate(null);
+                  setSilverRate(null);
+                  setRatesLastUpdate(null);
+                }
+              })();
             }
           } catch (e) {
-            console.error("Realtime handler error:", e);
+            console.error("Realtime market_rates handler error:", e);
           }
         }
       )
       .subscribe();
 
     return () => {
-      // unsubscribe
       supabase.removeChannel(channel);
     };
   }, []);
 
-  // Banner rotation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % banners.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [banners.length]);
-
-  // Mock rate updates (keeps UI lively)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setGoldRate((prev) => Math.round(prev + (Math.random() - 0.5) * 10));
-      setSilverRate((prev) => Math.round(prev + (Math.random() - 0.5) * 2));
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
+  // -------------------------
   // Actions
+  // -------------------------
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
   };
@@ -233,6 +273,17 @@ export default function Index() {
     addToCart(product);
     showAddedToCart(product.name);
   };
+
+  // format last update string
+  const formattedLastUpdate = ratesLastUpdate
+    ? new Date(ratesLastUpdate).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
 
   return (
     <Layout>
@@ -283,9 +334,7 @@ export default function Index() {
           {banners.map((_, index) => (
             <button
               key={index}
-              className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                index === currentBanner ? "bg-white scale-125 shadow-lg" : "bg-white/50 hover:bg-white/70"
-              }`}
+              className={`w-4 h-4 rounded-full transition-all duration-300 ${index === currentBanner ? "bg-white scale-125 shadow-lg" : "bg-white/50 hover:bg-white/70"}`}
               onClick={() => setCurrentBanner(index)}
             />
           ))}
@@ -308,7 +357,7 @@ export default function Index() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-8">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Live Market Rates</h2>
-            <p className="text-gray-600 text-lg">Updated every 30 seconds</p>
+            <p className="text-gray-600 text-lg">Updated from server • Polling & realtime enabled</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -319,12 +368,12 @@ export default function Index() {
                   <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
                     <Crown className="w-8 h-8 text-white" />
                   </div>
-                  <Badge className="bg-green-500 text-white border-0 text-base">LIVE</Badge>
+                  <Badge className="bg-green-500 text-white border-0 text-base">Today</Badge>
                 </div>
 
                 <h3 className="text-2xl font-bold mb-3">Gold Rate Today</h3>
                 <div className="mb-4">
-                  <p className="text-4xl md:text-5xl font-bold">₹{goldRate}</p>
+                  <p className="text-4xl md:text-5xl font-bold">₹{formatINR(goldRate)}</p>
                   <p className="text-white/80 text-lg">per gram (22k)</p>
                 </div>
 
@@ -342,18 +391,18 @@ export default function Index() {
                   <div className="p-3 bg-white/20 rounded-full backdrop-blur-sm">
                     <Gem className="w-8 h-8 text-white" />
                   </div>
-                  <Badge className="bg-green-500 text-white border-0 text-base">LIVE</Badge>
+                  <Badge className="bg-green-500 text-white border-0 text-base">Today</Badge>
                 </div>
 
                 <h3 className="text-2xl font-bold mb-3">Silver Rate Today</h3>
                 <div className="mb-4">
-                  <p className="text-4xl md:text-5xl font-bold">₹{silverRate}</p>
+                  <p className="text-4xl md:text-5xl font-bold">₹{formatINR(silverRate)}</p>
                   <p className="text-white/80 text-lg">per gram</p>
                 </div>
 
                 <div className="flex items-center text-white/80">
                   <Sparkles className="w-4 h-4 mr-2" />
-                  <span className="text-sm">Pure Sterling Silver</span>
+                  <span className="text-sm">Pure Silver</span>
                 </div>
               </CardContent>
             </Card>
@@ -362,7 +411,7 @@ export default function Index() {
           <div className="text-center mt-8">
             <p className="text-gray-500 text-sm">
               <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-              Rates updated • Last update: live
+              Rates updated • Last update: {formattedLastUpdate}
             </p>
           </div>
         </div>
@@ -570,8 +619,6 @@ export default function Index() {
           </div>
         </div>
       </section>
-
-      {/* (Instagram grid kept in your earlier version; paste back if needed) */}
 
       {/* PRODUCT MODAL */}
       <Dialog open={!!selectedProduct} onOpenChange={() => setSelectedProduct(null)}>

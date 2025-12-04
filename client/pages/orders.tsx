@@ -11,11 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 /**
- * Admin Orders Panel
- * - Matches DB columns: user_email, items (jsonb), totalweight, advancepaid, balanceamount,
- *   estimateddelivery, notes, status, totalprice, ref, delivered_at
+ * Admin Orders (phone-based, auto+91 normalization, improved UI)
  *
- * Drop into: app/admin/orders/page.tsx (Next 13 app router) or pages/admin/orders.tsx.
+ * - Ensures phone is normalized to +91XXXXXXXXXX before any insert/read.
+ * - Uses user_phone only (no user_email).
+ * - Better responsive layout and clearer controls.
  */
 
 type ItemRow = {
@@ -31,12 +31,46 @@ function randId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
+/** Normalize phone to +91XXXXXXXXXX where possible.
+ * Accepts inputs like:
+ *  - "7899013601" -> "+917899013601"
+ *  - "0917899013601" -> "+917899013601"
+ *  - "+917899013601" -> "+917899013601"
+ *  - "917899013601" -> "+917899013601"
+ * If it can't normalize sensibly, returns trimmed numeric-only with a leading +.
+ */
+function normalizeToPlus91(raw?: string) {
+  if (!raw) return "";
+  // remove all non-digits
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return "+91" + digits;
+  }
+  if (digits.length === 11 && digits.startsWith("0")) {
+    // leading 0, drop then prefix +91
+    return "+91" + digits.slice(1);
+  }
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return "+" + digits;
+  }
+  if (digits.length === 13 && digits.startsWith("091")) {
+    return "+91" + digits.slice(3);
+  }
+  // fallback: if already includes + and digits long enough, keep + +digits
+  if (raw.trim().startsWith("+") && digits.length >= 10) {
+    return "+" + digits;
+  }
+  // last resort: return digits prefixed with +
+  return "+" + digits;
+}
+
 export default function AdminOrdersPage() {
-  // Form state
-  const [userEmail, setUserEmail] = useState("");
+  // Form state (phone-based)
+  const [userPhoneRaw, setUserPhoneRaw] = useState("");
   const [items, setItems] = useState<ItemRow[]>([
     { id: randId(), name: "", code: "", image: "", quantity: 1, rate: null },
   ]);
+
   const [totalweight, setTotalweight] = useState("");
   const [advancepaid, setAdvancepaid] = useState<string>("");
   const [balanceamount, setBalanceamount] = useState<string>("");
@@ -44,9 +78,9 @@ export default function AdminOrdersPage() {
   const [deliveredAt, setDeliveredAt] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("pending");
-  const [ref, setRef] = useState<string>("");
+  const [ref, setRef] = useState("");
 
-  // totalprice: auto-calculated or manual override
+  // total price computed or override
   const [computedTotal, setComputedTotal] = useState<number | null>(null);
   const [useCustomTotal, setUseCustomTotal] = useState(false);
   const [customTotal, setCustomTotal] = useState<string>("");
@@ -57,19 +91,31 @@ export default function AdminOrdersPage() {
   const [profilesList, setProfilesList] = useState<string[]>([]);
   const [refreshFlag, setRefreshFlag] = useState(0);
 
-  // fetch profiles and recent orders
+  // fetch profiles and orders
   useEffect(() => { fetchProfiles(); }, []);
   useEffect(() => { fetchOrders(); }, [refreshFlag]);
 
-  useEffect(() => {
-    // recompute total when items change
-    computeTotalFromItems();
-  }, [items]);
+  // recompute when items change
+  useEffect(() => { computeTotalFromItems(); }, [items]);
 
   async function fetchProfiles() {
     try {
-      const { data } = await supabase.from("profiles").select("email").limit(200);
-      if (data) setProfilesList(data.map((r: any) => r.email).filter(Boolean));
+      // fetch phone numbers in profiles for datalist suggestions
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("phone")
+        .not("phone", "is", null)
+        .limit(200);
+
+      if (!error && data) {
+        // normalize stored phones if they exist — show friendly values in datalist
+        const normalized = data
+          .map((r: any) => (r.phone ? normalizeToPlus91(r.phone) : null))
+          .filter(Boolean);
+        setProfilesList(Array.from(new Set(normalized)));
+      } else if (error) {
+        console.warn("fetchProfiles error", error);
+      }
     } catch (err) {
       console.error("fetchProfiles error", err);
     }
@@ -77,14 +123,16 @@ export default function AdminOrdersPage() {
 
   async function fetchOrders() {
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("orders")
         .select("*")
         .order("orderdate", { ascending: false })
         .limit(200);
-      if (data) setOrders(data);
+
+      if (!error && data) setOrders(data);
+      else if (error) console.warn("fetchOrders error", error);
     } catch (err) {
-      console.error("fetchOrders error", err);
+      console.error("fetchOrders unexpected", err);
     }
   }
 
@@ -97,18 +145,17 @@ export default function AdminOrdersPage() {
   }
 
   function updateItem(id: string, key: keyof ItemRow, value: any) {
-    setItems((s) => s.map((it) => (it.id === id ? { ...it, [key]: value } : it)));
+    setItems((s) => s.map((it) => (it.id === id ? ({ ...it, [key]: value }) : it)));
   }
 
   function computeTotalFromItems() {
     let sum = 0;
     for (const it of items) {
-      const r = (it.rate ?? 0);
-      const q = (it.quantity ?? 0);
-      // only add if rate is a valid number
-      if (!isNaN(Number(r)) && !isNaN(Number(q))) sum += Number(r) * Number(q);
+      const r = Number(it.rate ?? 0);
+      const q = Number(it.quantity ?? 0);
+      if (!isNaN(r) && !isNaN(q)) sum += r * q;
     }
-    setComputedTotal(sum || null);
+    setComputedTotal(Number.isFinite(sum) ? sum : null);
   }
 
   function generateRef() {
@@ -119,37 +166,49 @@ export default function AdminOrdersPage() {
     return r;
   }
 
-  function validateForm() {
-    if (!userEmail || userEmail.trim() === "") { alert("Enter customer email"); return false; }
-    if (!items || items.length === 0) { alert("Add at least one item"); return false; }
+  function validateForm(normalizedPhone: string) {
+    if (!normalizedPhone || normalizedPhone.trim() === "") { alert("Enter customer phone number (will be formatted to +91...)"); return false; }
+    if (items.length === 0) { alert("Add at least one item"); return false; }
     for (const it of items) {
       if (!it.name || it.name.trim() === "") { alert("Each item must have a name"); return false; }
       if (!it.quantity || it.quantity < 1) { alert("Each item must have quantity >= 1"); return false; }
-      // rate optional, but if provided must be numeric
       if (it.rate !== null && it.rate !== undefined && isNaN(Number(it.rate))) { alert("Item rate must be a number"); return false; }
     }
-    // totalprice if custom must be numeric
     if (useCustomTotal && customTotal !== "" && isNaN(Number(customTotal))) { alert("Custom total must be numeric"); return false; }
     return true;
   }
 
-  // MAIN: insert order into Supabase (snake_case column names)
+  // insert order using phone number (user_phone) after normalization
   async function submitOrder() {
-    if (!validateForm()) return;
+    const normalizedPhone = normalizeToPlus91(userPhoneRaw);
+    if (!validateForm(normalizedPhone)) return;
+
     setLoading(true);
-    const email = userEmail.trim().toLowerCase();
+    const phone = normalizedPhone;
     const chosenRef = ref || generateRef();
 
     try {
-      // ensure profile exists (non-linked upsert if missing)
-      const { data: found } = await supabase.from("profiles").select("id").eq("email", email).limit(1);
+      // ensure profile exists by phone (insert normalized phone)
+      const { data: found, error: selErr } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("phone", phone)
+        .limit(1);
+
+      if (selErr) console.warn("profiles select warning", selErr);
+
       if (!found || found.length === 0) {
-        const { error: insProfileErr } = await supabase.from("profiles").insert([{ email }]);
-        if (insProfileErr) console.warn("profiles insert warning", insProfileErr);
-        else fetchProfiles();
+        const { error: insProfileErr } = await supabase.from("profiles").insert([{ phone }]);
+        if (insProfileErr) {
+          console.warn("profiles insert warning", insProfileErr);
+          // continue — profile isn't required for order insert if RLS/policies allow
+        } else {
+          // refresh suggestions
+          fetchProfiles();
+        }
       }
 
-      // prepare items payload: convert rate to numeric if present
+      // prepare items payload
       const payloadItems = items.map(it => ({
         name: it.name,
         code: it.code || null,
@@ -159,7 +218,7 @@ export default function AdminOrdersPage() {
       }));
 
       const payload = {
-        user_email: email,
+        user_phone: phone,
         items: payloadItems,
         totalweight: totalweight || null,
         advancepaid: advancepaid === "" ? null : Number(advancepaid),
@@ -187,7 +246,7 @@ export default function AdminOrdersPage() {
 
       alert("Order added successfully.");
       // reset form
-      setUserEmail("");
+      setUserPhoneRaw("");
       setItems([{ id: randId(), name: "", code: "", image: "", quantity: 1, rate: null }]);
       setTotalweight("");
       setAdvancepaid("");
@@ -204,7 +263,7 @@ export default function AdminOrdersPage() {
       setRefreshFlag(f => f + 1);
     } catch (err) {
       console.error("submitOrder unexpected error", err);
-      alert("Unexpected error (see console).");
+      alert("Unexpected error. See console.");
     } finally {
       setLoading(false);
     }
@@ -212,7 +271,6 @@ export default function AdminOrdersPage() {
 
   async function deleteOrder(id?: string) {
     if (!id) return;
-    // confirm
     // eslint-disable-next-line no-alert
     if (!confirm("Delete this order permanently?")) return;
     try {
@@ -232,36 +290,62 @@ export default function AdminOrdersPage() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto py-8 space-y-8">
+      <div className="max-w-6xl mx-auto py-8 space-y-8 px-4 sm:px-6 lg:px-8">
         <Card>
           <CardHeader>
-            <CardTitle>Add / Create Order</CardTitle>
+            <CardTitle>Add / Create Order (Phone)</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label>Customer Email</Label>
-              <Input
-                placeholder="customer@example.com"
-                value={userEmail}
-                onChange={(e) => setUserEmail(e.target.value)}
-                list="profiles-list"
-              />
-              <datalist id="profiles-list">
-                {profilesList.map((em) => <option key={em} value={em} />)}
-              </datalist>
+
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <Label>Customer Phone Number</Label>
+                <Input
+                  placeholder="+91 98765 43210"
+                  value={userPhoneRaw}
+                  onChange={(e) => setUserPhoneRaw(e.target.value)}
+                  list="profiles-list"
+                  className="rounded-md"
+                />
+                <datalist id="profiles-list">
+                  {profilesList.map((ph) => <option key={ph} value={ph} />)}
+                </datalist>
+                <p className="text-xs text-gray-500 mt-1">
+                  We will auto-format the number to <strong>+91XXXXXXXXXX</strong> before saving.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 justify-end">
+                <div>
+                  <Label>Reference (ref)</Label>
+                  <div className="flex gap-2">
+                    <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="REF-..." />
+                    <Button size="sm" onClick={() => generateRef()}>Generate</Button>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Button onClick={submitOrder} disabled={loading} className="w-full">
+                    {loading ? "Saving..." : "Save Order"}
+                  </Button>
+                </div>
+              </div>
             </div>
 
             <div>
               <Label>Items (add one or more)</Label>
-              <div className="space-y-3 mt-2">
+              <div className="space-y-3 mt-3">
                 {items.map((it, idx) => (
                   <div key={it.id} className="grid grid-cols-12 gap-2 items-center">
-                    <Input className="col-span-4" placeholder="Item name" value={it.name} onChange={(e) => updateItem(it.id, "name", e.target.value)} />
-                    <Input className="col-span-2" placeholder="Code" value={it.code || ""} onChange={(e) => updateItem(it.id, "code", e.target.value)} />
-                    <Input className="col-span-3" placeholder="Image URL" value={it.image || ""} onChange={(e) => updateItem(it.id, "image", e.target.value)} />
-                    <Input className="col-span-1" type="number" min={1} placeholder="Qty" value={it.quantity} onChange={(e) => updateItem(it.id, "quantity", Number(e.target.value))} />
-                    <Input className="col-span-1" type="number" min={0} placeholder="Rate" value={it.rate == null ? "" : String(it.rate)} onChange={(e) => updateItem(it.id, "rate", e.target.value === "" ? null : Number(e.target.value))} />
-                    <div className="col-span-1 flex gap-2">
+                    <Input className="col-span-5 md:col-span-6" placeholder="Item name" value={it.name} onChange={(e) => updateItem(it.id, "name", e.target.value)} />
+                    <Input className="col-span-2 md:col-span-2" placeholder="Code" value={it.code || ""} onChange={(e) => updateItem(it.id, "code", e.target.value)} />
+                    <Input className="col-span-3 md:col-span-2" placeholder="Image URL" value={it.image || ""} onChange={(e) => updateItem(it.id, "image", e.target.value)} />
+                    <Input className="col-span-1 md:col-span-1" type="number" min={1} placeholder="Qty" value={it.quantity} onChange={(e) => updateItem(it.id, "quantity", Number(e.target.value))} />
+                    <Input className="col-span-1 md:col-span-1" type="number" min={0} placeholder="Rate" value={it.rate == null ? "" : String(it.rate)} onChange={(e) => updateItem(it.id, "rate", e.target.value === "" ? null : Number(e.target.value))} />
+                    <div className="col-span-12 flex gap-2 justify-end md:hidden">
+                      {idx === items.length - 1 && <Button size="sm" onClick={addItemRow}>Add</Button>}
+                    </div>
+                    <div className="col-span-12 hidden md:flex md:col-span-12 justify-end gap-2">
                       <Button size="sm" variant="ghost" onClick={() => removeItemRow(it.id)}>Remove</Button>
                       {idx === items.length - 1 && <Button size="sm" onClick={addItemRow}>Add</Button>}
                     </div>
@@ -270,7 +354,7 @@ export default function AdminOrdersPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Total Weight</Label>
                 <Input value={totalweight} onChange={(e) => setTotalweight(e.target.value)} placeholder="e.g. 10g" />
@@ -285,7 +369,7 @@ export default function AdminOrdersPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label>Estimated Delivery</Label>
                 <Input type="date" value={estimateddelivery} onChange={(e) => setEstimateddelivery(e.target.value)} />
@@ -310,7 +394,7 @@ export default function AdminOrdersPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 items-end">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               <div>
                 <Label>Order Total (computed)</Label>
                 <div className="flex items-center gap-2">
@@ -318,15 +402,15 @@ export default function AdminOrdersPage() {
                   <Button size="sm" onClick={() => { computeTotalFromItems(); alert("Computed from item rates * qty"); }}>Recompute</Button>
                 </div>
               </div>
+
               <div>
                 <Label>Custom total?</Label>
-                <div className="flex gap-2">
-                  <label className="flex items-center gap-2">
-                    <input type="checkbox" checked={useCustomTotal} onChange={(e) => setUseCustomTotal(e.target.checked)} />
-                    <span className="text-sm">Use custom total</span>
-                  </label>
+                <div className="flex items-center gap-2">
+                  <input id="useCustom" type="checkbox" checked={useCustomTotal} onChange={(e) => setUseCustomTotal(e.target.checked)} />
+                  <label htmlFor="useCustom" className="text-sm">Use custom total</label>
                 </div>
               </div>
+
               <div>
                 <Label>Custom Total Value (override)</Label>
                 <Input type="number" value={customTotal} onChange={(e) => setCustomTotal(e.target.value)} placeholder="Enter manual total if override" />
@@ -338,29 +422,16 @@ export default function AdminOrdersPage() {
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
 
-            <div className="grid grid-cols-3 gap-4 items-center">
-              <div>
-                <Label>Reference (ref)</Label>
-                <div className="flex gap-2">
-                  <Input value={ref} onChange={(e) => setRef(e.target.value)} placeholder="REF-..." />
-                  <Button size="sm" onClick={() => generateRef()}>Generate</Button>
-                </div>
-              </div>
-              <div>
-                <Label>Save & Add</Label>
-                <Button onClick={submitOrder} disabled={loading}>{loading ? "Saving..." : "Save Order"}</Button>
-              </div>
-              <div>
-                <Label>Reset Form</Label>
-                <Button variant="outline" onClick={() => {
-                  setUserEmail(""); setItems([{ id: randId(), name: "", code: "", image: "", quantity: 1, rate: null }]); setTotalweight(""); setAdvancepaid(""); setBalanceamount(""); setEstimateddelivery(""); setDeliveredAt(""); setNotes(""); setStatus("pending"); setRef(""); setUseCustomTotal(false); setCustomTotal(""); setComputedTotal(null);
-                }}>Reset</Button>
-              </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => {
+                setUserPhoneRaw(""); setItems([{ id: randId(), name: "", code: "", image: "", quantity: 1, rate: null }]); setTotalweight(""); setAdvancepaid(""); setBalanceamount(""); setEstimateddelivery(""); setDeliveredAt(""); setNotes(""); setStatus("pending"); setRef(""); setUseCustomTotal(false); setCustomTotal(""); setComputedTotal(null);
+              }}>Reset</Button>
+              <Button onClick={submitOrder} disabled={loading}>{loading ? "Saving..." : "Save & Add"}</Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Recent orders list */}
+        {/* Recent orders */}
         <Card>
           <CardHeader><CardTitle>Recent Orders</CardTitle></CardHeader>
           <CardContent>
@@ -370,20 +441,20 @@ export default function AdminOrdersPage() {
               <div className="space-y-4">
                 {orders.map((o: any) => (
                   <div key={o.id} className="border rounded p-4">
-                    <div className="flex justify-between">
+                    <div className="flex flex-col md:flex-row justify-between gap-4">
                       <div>
                         <div className="text-sm text-gray-600">Ref: <strong>{o.ref}</strong></div>
                         <div className="text-sm text-gray-600">Order ID: <strong>{o.id}</strong></div>
-                        <div className="text-sm text-gray-600">Customer: <strong>{o.user_email}</strong></div>
+                        <div className="text-sm text-gray-600">Customer Phone: <strong>{o.user_phone}</strong></div>
                         <div className="text-sm text-gray-600">Status: <strong>{o.status}</strong></div>
                         <div className="text-sm text-gray-600">Placed: <strong>{o.orderdate ? new Date(o.orderdate).toLocaleString() : "-"}</strong></div>
                         <div className="text-sm text-gray-600">Estimated: <strong>{o.estimateddelivery ?? "-"}</strong></div>
                         <div className="text-sm text-gray-600">Total Price: <strong>₹{o.totalprice ?? "-"}</strong></div>
                       </div>
-                      <div className="flex flex-col gap-2">
+
+                      <div className="flex flex-col gap-2 items-start md:items-end">
                         <Button size="sm" onClick={() => {
-                          // copy order data to clipboard for quick paste into WhatsApp/admin notes
-                          const summary = `Ref: ${o.ref}\nCustomer: ${o.user_email}\nTotal: ₹${o.totalprice ?? "-"}\nItems:\n${(o.items || []).map((it: any) => `- ${it.name} x${it.quantity} @ ${it.rate ?? "-"} each`).join("\n")}`;
+                          const summary = `Ref: ${o.ref}\nPhone: ${o.user_phone}\nTotal: ₹${o.totalprice ?? "-"}\nItems:\n${(o.items || []).map((it: any) => `- ${it.name} x${it.quantity} @ ${it.rate ?? "-"} each`).join("\n")}`;
                           navigator.clipboard?.writeText(summary);
                           alert("Order summary copied to clipboard.");
                         }}>Copy Summary</Button>
