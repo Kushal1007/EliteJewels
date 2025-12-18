@@ -15,14 +15,14 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { isLoggedIn, authModalOpen, setAuthModalOpen, showAuthModal, login, demoLogin, user } = useAuth();
+  const { isLoggedIn, authModalOpen, setAuthModalOpen, showAuthModal, login, user } = useAuth();
   const location = useLocation();
 
   const navItems = [
     { name: 'Home', href: '/', current: location.pathname === '/' },
     { name: 'About', href: '/about', current: location.pathname === '/about' },
     { name: 'Gold', href: '/gold', current: location.pathname === '/gold' },
-    { name: 'Silver', href: '/silver', current: location.pathname === '/silver' },
+    /*{ name: 'Silver', href: '/silver', current: location.pathname === '/silver' },*/
     { name: 'Contact', href: '/contact', current: location.pathname === '/contact' },
   ];
 
@@ -231,7 +231,6 @@ export default function Layout({ children }: LayoutProps) {
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         onLogin={login}
-        onDemoLogin={demoLogin}
       />
     </div>
   );

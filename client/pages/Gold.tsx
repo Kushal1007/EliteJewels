@@ -37,10 +37,9 @@ interface MainCat {
 }
 
 export default function Gold() {
-  const [selectedMainCategory, setSelectedMainCategory] = useState("rings");
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>("men");
+  const [selectedMainCategory, setSelectedMainCategory] = useState("short_chains");
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState("all");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ rings: true });
   const [showFullCollection, setShowFullCollection] = useState<Record<string, boolean>>({});
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -53,18 +52,8 @@ export default function Gold() {
 
   // 🟡 Updated categories
   const categories: MainCat[] = [
-    { id: "chains", name: "Chains" },
-    { id: "earrings", name: "Earrings" },
-    {
-      id: "rings",
-      name: "Rings",
-      subCategories: [
-        { id: "men", name: "Men" },
-        { id: "women", name: "Women" },
-      ],
-    },
-    { id: "haara", name: "Haara" },
-    { id: "necklace", name: "Necklace" },
+    { id: "short_chains", name: "Short Chains" },
+    { id: "mangalya", name: "Mangalya" },
     {
       id: "bracelet",
       name: "Bracelet",
@@ -74,13 +63,15 @@ export default function Gold() {
         { id: "kids", name: "Kids" },
       ],
     },
+    { id: "haara", name: "Haara" },
+    { id: "necklace", name: "Necklace" },
+    
   ];
 
   // 🎨 Category-specific styles
   const categoryStyles: Record<string, string[]> = {
-    chains: ["all", "box", "cable", "rope", "fancy"],
-    earrings: ["all", "stud", "hangings", "antique jhumka", ""],
-    rings: ["all", "single stone", "plain", "couple", "fancy"],
+    short_chains: ["all", "box", "cable", "rope", "fancy"],
+    mangalya: ["all", "strong", "hallow", "mope",],
     haara: ["all", "traditional", "temple", "modern"],
     necklace: ["all", "choker", "long", "temple", "designer"],
     bracelet: ["all", "plain", "charm", "link", "fancy"],
@@ -89,18 +80,24 @@ export default function Gold() {
   // 🟩 Height function for each category
   const getImageHeight = (category: string) => {
     switch (category.toLowerCase()) {
-      case "chains":
+      case "short_chains":
       case "haara":
       case "necklace":
       case "bracelet":
         return "h-80 sm:h-96"; // taller images
-      case "rings":
+      case "mangalya":
       case "earrings":
         return "h-64 sm:h-72"; // medium height
       default:
         return "h-72"; // fallback
     }
   };
+
+  useEffect(() => {
+  const hasSub = categories.find(c => c.id === selectedMainCategory)?.subCategories;
+  if (!hasSub) setSelectedSubCategory(null);
+    }, [selectedMainCategory]);
+
 
   useEffect(() => {
     const fetchProducts = async () => {
